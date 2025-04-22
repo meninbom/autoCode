@@ -51,7 +51,7 @@ class App(ctk.CTk):
         super().__init__()
         self.title("Gerador de Links SGD")
         self.geometry("500x500")
-        self.minsize(400, 750)
+        self.minsize(400, 700)
         
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -131,7 +131,8 @@ class App(ctk.CTk):
                 "diretorio_download": "",
                 "responsavel": self.responsible_list[0],
                 "data_inicial": "",
-                "data_final": ""
+                "data_final": "",
+                "ultimo_arquivo": ""
             }
             with open('config.json', 'w') as f:
                 json.dump(default_config, f)
@@ -160,7 +161,8 @@ class App(ctk.CTk):
             'diretorio_download': self.entry_directory.get(),
             'responsavel': self.dropdown_responsible.get(),
             'data_inicial': self.entry_start_date.get(),
-            'data_final': self.entry_end_date.get()
+            'data_final': self.entry_end_date.get(),
+            'ultimo_arquivo': self.config.get('ultimo_arquivo', '')
         }
         with open('config.json', 'w') as f:
             json.dump(config, f)
@@ -337,16 +339,19 @@ class App(ctk.CTk):
                 "Produto",
                 "Agendado",
                 "Tempo Realizado",
-                "Local do Treinamento"
+                "Local do treinamento"
             ]
             # Only drop columns that exist in the DataFrame to avoid KeyError
             columns_to_drop = [col for col in columns_to_remove if col in df.columns]
             df.drop(columns=columns_to_drop, inplace=True)
             logger.info(f"Colunas removidas: {columns_to_drop}")
             
-            # Generate links
+            # Convert "Número" to integer
+            df['Número'] = pd.to_numeric(df['Número'], downcast='integer', errors='coerce')
+            
+            # Generate links using integer codes
             link_base = "https://suporte.dominioatendimento.com/sgsc/faces/externo.html?externo={codigo}&externoPendente=true"
-            df['link'] = df['Número'].apply(lambda x: link_base.format(codigo=x))
+            df['link'] = df['Número'].apply(lambda x: link_base.format(codigo=int(x)) if pd.notna(x) else '')
             
             # Overwrite the file with the processed data
             df.to_excel(processed_file, index=False)
@@ -393,7 +398,8 @@ class App(ctk.CTk):
                 'diretorio_download': directory,
                 'responsavel': responsible,
                 'data_inicial': start_date,
-                'data_final': end_date
+                'data_final': end_date,
+                'ultimo_arquivo': processed_file
             }
             with open('config.json', 'w') as f:
                 json.dump(self.config, f)
@@ -418,3 +424,5 @@ if __name__ == "__main__":
         app.mainloop()
     except Exception as e:
         messagebox.showerror("Erro", f"Erro ao iniciar a aplicação: {str(e)}")
+
+  
